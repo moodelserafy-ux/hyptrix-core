@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr"> <!-- قلبنا الإنجليزي عشان بيدي إحساس تقني قوي للـ Tech Startups -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyptrix | Next-Gen Cloud Deployment</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- خطوط Inter (الخط الرسمي لشركات التكنولوجيا) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-blue: #3B82F6; /* مستوحى من الشعار */
+            --brand-light: #E0E7FF;
+            --brand-dark: #0F172A;
+            --bg-color: #030712; /* أسود عميق زي خلفية الشعار */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: #F9FAFB;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        /* تأثيرات الإضاءة في الخلفية */
+        .glow-bg {
+            position: absolute;
+            top: -10%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(3,7,18,0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* شريط التنقل الشفاف */
+        .glass-nav {
+            background: rgba(3, 7, 18, 0.6);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* النصوص المتدرجة */
+        .text-gradient {
+            background: linear-gradient(135deg, #FFFFFF 0%, #93C5FD 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* كارت الرفع الاحترافي */
+        .deploy-card {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        /* حقل الإدخال */
+        .input-field {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.2s ease;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: var(--brand-blue);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        /* منطقة الإفلات الدقيقة */
+        .drop-zone {
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.02);
+            transition: all 0.2s ease;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--brand-blue);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        /* خط التحميل (Progress Line) */
+        .progress-line {
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            display: none;
+        }
+        .progress-line .bar {
+            height: 100%;
+            width: 30%;
+            background: var(--brand-blue);
+            animation: loading 1.5s infinite ease-in-out;
+        }
+        @keyframes loading {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(350%); }
+        }
+
+        /* أزرار احترافية */
+        .btn-primary {
+            background: var(--brand-blue);
+            color: white;
+            transition: all 0.2s ease;
+        }
+        .btn-primary:hover {
+            background: #2563EB;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glow-bg"></div>
+
+    <!-- Navbar -->
+    <nav class="glass-nav fixed w-full z-50 top-0 transition-all duration-300">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <!-- الشعار (هنحط مكان لصورتك) -->
+                <img src="logo.png" alt="Hyptrix Logo" class="w-10 h-10 rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-transform hover:scale-105">
+
+                <span class="text-xl font-bold tracking-tight">Hyptrix</span>
+            </div>
+            <div class="hidden md:flex space-x-8 text-sm font-medium text-gray-400">
+                <a href="#" class="hover:text-white transition">Infrastructure</a>
+                <a href="#" class="hover:text-white transition">Documentation</a>
+                <a href="mailto:support@hyptrix.com" class="hover:text-white transition">Support</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="min-h-screen flex flex-col justify-center items-center px-4 pt-20">
+        
+        <div class="text-center mb-12 w-full max-w-3xl">
+            <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight mb-4 leading-tight">
+                Deploy with <span class="text-gradient">Zero Friction.</span>
+            </h1>
+            <p class="text-lg text-gray-400 font-light max-w-xl mx-auto">
+                The ultimate edge computing platform for modern web applications. Push your code to the global network instantly.
+            </p>
+        </div>
+
+        <!-- The Engine (Deployment Console) -->
+        <div class="deploy-card w-full max-w-lg p-8">
+            <div class="mb-6 flex justify-between items-center border-b border-gray-800 pb-4">
+                <span class="text-sm font-semibold text-gray-300 tracking-wide uppercase">New Deployment</span>
+                <span class="text-xs text-blue-400 font-mono">v2.0 Core</span>
+            </div>
+
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">Project Name</label>
+                    <input type="text" id="siteName" placeholder="e.g. production-build" class="input-field w-full rounded-md px-4 py-3 text-sm font-mono" required>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">Source Assets (ZIP)</label>
+                    <div class="drop-zone rounded-md p-8 text-center cursor-pointer" id="dropZone">
+                        <svg class="w-6 h-6 mx-auto text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        <div class="text-sm font-medium text-gray-300">Drag & Drop project files</div>
+                        <div class="text-xs text-gray-500 mt-1">or click to browse</div>
+                        <input type="file" id="fileInput" class="hidden" accept=".zip,.html">
+                    </div>
+                </div>
+
+                <!-- التحميل -->
+                <div id="loaderWrapper" class="hidden">
+                    <div class="flex justify-between text-xs text-gray-400 mb-2">
+                        <span>Deploying to Edge Network...</span>
+                        <span class="text-blue-400 font-mono">Processing</span>
+                    </div>
+                    <div class="progress-line rounded-full flex" style="display: block;">
+                        <div class="bar rounded-full"></div>
+                    </div>
+                </div>
+
+                <!-- النتيجة -->
+                <div id="resultBox" class="hidden border border-gray-800 bg-gray-900/50 rounded-md p-4">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span class="text-sm font-medium text-gray-200">Deployment Successful</span>
+                    </div>
+                    <a href="#" id="liveLink" target="_blank" class="block w-full text-center btn-primary text-sm font-medium py-2 rounded-md">View Live Deployment</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Terminal-like Logs (Optional detail for tech feel) -->
+        <div class="mt-8 text-xs font-mono text-gray-600 opacity-60">
+            > System ready. Waiting for input payload...
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-900 bg-[#030712] py-8 mt-auto">
+        <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="text-xs text-gray-500">
+                © 2026 Hyptrix Inc. Engineered for performance.
+            </div>
+            <div class="flex space-x-6 text-xs text-gray-500">
+                <a href="#" class="hover:text-gray-300 transition">Privacy Policy</a>
+                <a href="#" class="hover:text-gray-300 transition">Terms of Service</a>
+                <a href="mailto:founder@hyptrix.com" class="hover:text-gray-300 transition">founder@hyptrix.com</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- سكريبت التشغيل الأساسي -->
+    <script>
+        const CLOUDFLARE_PUB_LINK = "https://hyptrix.moodelserafy.workers.dev"; // اللينك الخاص بك
+
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const siteNameInput = document.getElementById('siteName');
+        const loaderWrapper = document.getElementById('loaderWrapper');
+        const resultBox = document.getElementById('resultBox');
+        const liveLink = document.getElementById('liveLink');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
+        fileInput.addEventListener('change', function() { handleFiles(this.files); });
+
+        function handleFiles(files) {
+            if(files.length === 0) return;
+            // تنسيق احترافي للاسم (أحرف صغيرة ومفيش مسافات)
+            const siteName = siteNameInput.value.trim().replace(/\s+/g, '-').toLowerCase();
+            
+            if(!siteName) {
+                siteNameInput.style.borderColor = 'red';
+                setTimeout(() => siteNameInput.style.borderColor = '', 2000);
+                siteNameInput.focus();
+                return;
+            }
+            uploadFile(files[0], siteName);
+        }
+
+        async function uploadFile(file, siteName) {
+            // إخفاء الـ DropZone وتشغيل خط التحميل التقني
+            dropZone.style.display = 'none';
+            loaderWrapper.style.display = 'block';
+            resultBox.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('site_name', siteName);
+            formData.append('site_file', file);
+
+            try {
+                const response = await fetch('/deploy', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if(data.status === 'success') {
+    loaderWrapper.style.display = 'none';
+    resultBox.style.display = 'block';
+    
+    // لو العميل رافع ملف واحد، اللينك ياخد اسم الملف الحقيقي
+    // لو رافع ZIP، النظام يفترض إن جواه index.html كمعيار عالمي
+    const entryFile = file.name.endsWith('.zip') ? 'index.html' : file.name;
+                
+    liveLink.href = `${CLOUDFLARE_PUB_LINK}/${siteName}/${entryFile}`;
+                
+                } else {
+                    alert('Deployment Failed: ' + data.error);
+                    resetUI();
+                }
+            } catch (error) {
+                alert('Connection to core engine lost.');
+                resetUI();
+            }
+        }
+
+        function resetUI() {
+            dropZone.style.display = 'block';
+            loaderWrapper.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
