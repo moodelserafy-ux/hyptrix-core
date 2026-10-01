@@ -215,8 +215,7 @@
 
     <!-- سكريبت التشغيل الأساسي -->
     <script>
-        const CLOUDFLARE_PUB_LINK = "https://hyptrix.moodelserafy.workers.dev"; // اللينك الخاص بك
-
+        
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
         const siteNameInput = document.getElementById('siteName');
@@ -273,11 +272,12 @@
     loaderWrapper.style.display = 'none';
     resultBox.style.display = 'block';
     
-    // لو العميل رافع ملف واحد، اللينك ياخد اسم الملف الحقيقي
-    // لو رافع ZIP، النظام يفترض إن جواه index.html كمعيار عالمي
-    const entryFile = file.name.endsWith('.zip') ? 'index.html' : file.name;
-                
-    liveLink.href = `${CLOUDFLARE_PUB_LINK}/${siteName}/${entryFile}`;
+    const entryFile = file.name.endsWith('.zip') ? '' : file.name;
+    // اللينك الجديد الساحر بالدومين الفرعي
+    liveLink.href = `https://${siteName}.hyptrix.com/${entryFile}`;
+    liveLink.textContent = `https://${siteName}.hyptrix.com`;
+
+
                 
                 } else {
                     alert('Deployment Failed: ' + data.error);
