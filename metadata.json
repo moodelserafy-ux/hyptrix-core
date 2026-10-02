@@ -1,0 +1,6 @@
+{
+  "name": "Hyptrix",
+  "description": "Next-generation edge cloud deployment platform with zero egress fees, global edge network, and instant sub-millisecond rollbacks.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
