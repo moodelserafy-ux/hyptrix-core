@@ -90,3 +90,61 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+// 3. دالة الحذف (لفك ربط الدومين وإزالته من Cloudflare)
+export async function DELETE(request: Request) {
+  try {
+    const { domain } = await request.json();
+
+    if (!domain) {
+      return NextResponse.json({ error: 'Domain is required' }, { status: 400 });
+    }
+
+    const ZONE_ID = process.env.CLOUDFLARE_ZONE_ID;
+    const GLOBAL_KEY = process.env.CLOUDFLARE_GLOBAL_KEY;
+    const EMAIL = process.env.CLOUDFLARE_EMAIL;
+
+    if (!ZONE_ID || !GLOBAL_KEY || !EMAIL) {
+      return NextResponse.json({ error: 'Cloudflare configuration missing' }, { status: 500 });
+    }
+
+    // الخطوة الأولى: البحث عن الدومين لنجلب الـ ID الخاص به
+    const getRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/custom_hostnames?hostname=${domain}`, {
+      method: 'GET',
+      headers: {
+        'X-Auth-Email': EMAIL,
+        'X-Auth-Key': GLOBAL_KEY,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const getData = await getRes.json();
+
+    // لو الدومين مش موجود أصلاً
+    if (!getData.success || getData.result.length === 0) {
+      return NextResponse.json({ error: 'Domain not found in Cloudflare' }, { status: 404 });
+    }
+
+    const hostnameId = getData.result[0].id;
+
+    // الخطوة الثانية: حذف الدومين باستخدام الـ ID
+    const deleteRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/custom_hostnames/${hostnameId}`, {
+      method: 'DELETE',
+      headers: {
+        'X-Auth-Email': EMAIL,
+        'X-Auth-Key': GLOBAL_KEY,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const deleteData = await deleteRes.json();
+
+    if (deleteRes.ok && deleteData.success) {
+      return NextResponse.json({ status: 'success', message: 'Domain removed successfully' });
+    } else {
+      return NextResponse.json({ error: 'Failed to delete domain from Cloudflare' }, { status: 400 });
+    }
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

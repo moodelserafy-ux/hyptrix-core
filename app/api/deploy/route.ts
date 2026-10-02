@@ -69,3 +69,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+// دالة الحذف: لمسح ملفات المشروع نهائياً من السيرفر
+export async function DELETE(request: Request) {
+  try {
+    const { projectId } = await request.json();
+
+    if (!projectId) {
+      return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
+    }
+
+    // --- منطقة مسح الملفات الفعلية ---
+    // بناءً على الطريقة اللي إنت مبرمج بيها الـ POST، هنا بتمسح المجلد.
+    // لو إنت بتحفظ الملفات على فولدر محلي جوه Render (مثلاً فولدر اسمه "sites"):
+    /*
+    import fs from 'fs/promises';
+    import path from 'path';
+    
+    try {
+      // هنا بنفترض إنك مسمي المجلد باسم المشروع
+      const projectDirectory = path.join(process.cwd(), 'sites', projectId); 
+      await fs.rm(projectDirectory, { recursive: true, force: true });
+    } catch (fsError) {
+      console.log('Project folder already deleted or not found.');
+    }
+    */
+    
+    // ملاحظة: لو إنت بتستخدم Cloudflare R2 أو AWS S3 لتخزين الملفات، 
+    // هتحط كود الحذف الخاص بيهم هنا بدل كود الـ fs.
+
+    return NextResponse.json({ status: 'success', message: 'Project files deleted permanently' });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

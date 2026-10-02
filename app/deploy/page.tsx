@@ -319,13 +319,49 @@ export default function DeployDashboardPage() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const deleteDeployment = (id: string, e: React.MouseEvent) => {
+      const deleteDeployment = async (dep: DeploymentRecord, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(language === 'ar' ? 'هل تريد حذف هذا الرابط من سجلك المحلي؟' : 'Remove this project link from your local records?')) {
-      const filtered = deployments.filter((d) => d.id !== id);
-      saveDeployments(filtered);
+    
+    if (confirm(language === 'ar' ? 'هل تريد حذف هذا المشروع نهائياً؟ سيتم فك ارتباط أي نطاقات مخصصة.' : 'Remove this project permanently? Linked domains will be unlinked.')) {
+      try {
+        // 1. لو المشروع مربوط بدومين، نفكه الأول من كلاودفلير
+        if (dep.customDomain) {
+          await fetch('/api/domain', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domain: dep.customDomain }),
+          });
+        }
+
+        // 2. نمسح المشروع نفسه من السيرفر (باستخدام اسم المشروع)
+        await fetch('/api/deploy', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectId: dep.name }), 
+        });
+
+        // 3. نمسحه من الواجهة والذاكرة المحلية
+        const filtered = deployments.filter((d) => d.id !== dep.id);
+        saveDeployments(filtered);
+
+      } catch (err) {
+        alert(language === 'ar' ? 'حدث خطأ أثناء الحذف' : 'Error deleting project');
+      }
     }
   };
+
+
+
+        // 3. نمسحه من الواجهة
+        const filtered = deployments.filter((d) => d.id !== id);
+        saveDeployments(filtered);
+
+      } catch (err) {
+        alert(language === 'ar' ? 'حدث خطأ أثناء الحذف' : 'Error deleting project');
+      }
+    }
+  };
+
 
   const openInspectorFor = (dep: DeploymentRecord) => {
     setPreviewProject({ name: dep.name, domain: dep.url });
@@ -826,7 +862,7 @@ export default function DeployDashboardPage() {
                           </button>
 
                           <button
-                            onClick={(e) => deleteDeployment(dep.id, e)}
+                            onClick={(e) => deleteDeployment(dep, e)}
                             title={language === 'ar' ? 'حذف من السجل' : 'Delete from history'}
                             className="p-1 rounded text-[#94A3B8] hover:text-red-500 transition-colors cursor-pointer"
                           >
