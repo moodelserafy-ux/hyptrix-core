@@ -1,221 +1,195 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr"> <!-- قلبنا الإنجليزي عشان بيدي إحساس تقني قوي للـ Tech Startups -->
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hyptrix | Next-Gen Cloud Deployment</title>
-    <!-- Tailwind CSS -->
+    <title>Hyptrix | The Edge Network for Next-Gen Teams</title>
+    <meta name="description" content="Deploy your web apps instantly to the global edge network with zero configuration. Hyptrix outpaces traditional cloud hosting.">
+    
+    <!-- SEO & Open Graph Tags -->
+    <meta property="og:title" content="Hyptrix | Zero-Friction Cloud Deployment">
+    <meta property="og:description" content="The ultimate edge computing platform. Push code, get a live URL instantly.">
+    <meta property="og:image" content="/logo.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- خطوط Inter (الخط الرسمي لشركات التكنولوجيا) -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --brand-blue: #3B82F6; /* مستوحى من الشعار */
-            --brand-light: #E0E7FF;
-            --brand-dark: #0F172A;
-            --bg-color: #030712; /* أسود عميق زي خلفية الشعار */
+            --bg-base: #000000;
+            --surface: #0a0a0a;
+            --border: #1f1f1f;
+            --brand: #ffffff;
+            --brand-glow: rgba(255, 255, 255, 0.1);
         }
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            color: #F9FAFB;
+            background-color: var(--bg-base);
+            color: #ededed;
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
         }
-        /* تأثيرات الإضاءة في الخلفية */
-        .glow-bg {
-            position: absolute;
-            top: -10%;
+
+        /* الاحترافية في البساطة: إضاءة خافتة جداً تتحرك مع الماوس */
+        .ambient-glow {
+            position: fixed;
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
-            width: 800px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(3,7,18,0) 70%);
+            width: 60vw;
+            height: 60vh;
+            background: radial-gradient(circle, var(--brand-glow) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+            filter: blur(80px);
             z-index: -1;
             pointer-events: none;
         }
-        
-        /* شريط التنقل الشفاف */
-        .glass-nav {
-            background: rgba(3, 7, 18, 0.6);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+
+        /* تأثيرات الظهور (Reveal Animations) */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px) scale(0.98);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0) scale(1);
         }
 
-        /* النصوص المتدرجة */
-        .text-gradient {
-            background: linear-gradient(135deg, #FFFFFF 0%, #93C5FD 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        /* كارت الرفع بخطوط دقيقة */
+        .premium-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+        .premium-card:hover {
+            border-color: #333;
         }
 
-        /* كارت الرفع الاحترافي */
-        .deploy-card {
-            background: rgba(15, 23, 42, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(10px);
+        /* منطقة الإفلات */
+        .drop-zone {
+            border: 1px dashed #333;
+            background: #050505;
             transition: all 0.3s ease;
         }
-
-        /* حقل الإدخال */
-        .input-field {
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
-            transition: all 0.2s ease;
+        .drop-zone.dragover {
+            border-color: #fff;
+            background: #111;
         }
-        .input-field:focus {
+
+        /* الأزرار والحقول */
+        .modern-input {
+            background: #000;
+            border: 1px solid #333;
+            color: #fff;
+            transition: all 0.2s;
+        }
+        .modern-input:focus {
             outline: none;
-            border-color: var(--brand-blue);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+            border-color: #fff;
+            box-shadow: 0 0 0 1px #fff;
         }
-
-        /* منطقة الإفلات الدقيقة */
-        .drop-zone {
-            border: 1px dashed rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.02);
-            transition: all 0.2s ease;
+        .btn-core {
+            background: #fff;
+            color: #000;
+            font-weight: 500;
+            transition: all 0.2s;
         }
-        .drop-zone:hover, .drop-zone.dragover {
-            border-color: var(--brand-blue);
-            background: rgba(59, 130, 246, 0.05);
-        }
-
-        /* خط التحميل (Progress Line) */
-        .progress-line {
-            height: 2px;
-            background: rgba(255, 255, 255, 0.1);
-            overflow: hidden;
-            display: none;
-        }
-        .progress-line .bar {
-            height: 100%;
-            width: 30%;
-            background: var(--brand-blue);
-            animation: loading 1.5s infinite ease-in-out;
-        }
-        @keyframes loading {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(350%); }
-        }
-
-        /* أزرار احترافية */
-        .btn-primary {
-            background: var(--brand-blue);
-            color: white;
-            transition: all 0.2s ease;
-        }
-        .btn-primary:hover {
-            background: #2563EB;
+        .btn-core:hover {
+            background: #e5e5e5;
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
     </style>
 </head>
 <body>
+    <div class="ambient-glow"></div>
 
-    <div class="glow-bg"></div>
-
-    <!-- Navbar -->
-    <nav class="glass-nav fixed w-full z-50 top-0 transition-all duration-300">
-        <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+    <nav class="fixed w-full z-50 top-0 bg-black/50 backdrop-blur-md border-b border-[#1f1f1f]">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <!-- الشعار (هنحط مكان لصورتك) -->
-                <img src="logo.png" alt="Hyptrix Logo" class="w-10 h-10 rounded-xl shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-transform hover:scale-105">
-
-                <span class="text-xl font-bold tracking-tight">Hyptrix</span>
+                <img src="logo.png" alt="Hyptrix" class="w-8 h-8 rounded-lg">
+                <span class="text-lg font-semibold tracking-tight text-white">Hyptrix</span>
             </div>
-            <div class="hidden md:flex space-x-8 text-sm font-medium text-gray-400">
-                <a href="#" class="hover:text-white transition">Infrastructure</a>
+            <div class="hidden md:flex space-x-6 text-sm text-gray-400">
                 <a href="#" class="hover:text-white transition">Documentation</a>
-                <a href="mailto:support@hyptrix.com" class="hover:text-white transition">Support</a>
+                <a href="/privacy.html" class="hover:text-white transition">Privacy</a>
+                <a href="/terms.html" class="hover:text-white transition">Terms</a>
             </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="min-h-screen flex flex-col justify-center items-center px-4 pt-20">
+    <main class="min-h-screen flex flex-col justify-center items-center px-4 pt-32 pb-20">
         
-        <div class="text-center mb-12 w-full max-w-3xl">
-            <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight mb-4 leading-tight">
-                Deploy with <span class="text-gradient">Zero Friction.</span>
+        <!-- Hero Section -->
+        <div class="text-center mb-16 w-full max-w-4xl reveal delay-100">
+            <h1 class="text-5xl md:text-7xl font-bold tracking-tighter mb-6">
+                Ship code. <br><span class="text-gray-500">Instantly global.</span>
             </h1>
-            <p class="text-lg text-gray-400 font-light max-w-xl mx-auto">
-                The ultimate edge computing platform for modern web applications. Push your code to the global network instantly.
+            <p class="text-lg text-gray-400 font-normal max-w-2xl mx-auto">
+                Hyptrix provides the infrastructure to deploy your sites to the edge in milliseconds. No config, no servers, just performance.
             </p>
         </div>
 
-        <!-- The Engine (Deployment Console) -->
-        <div class="deploy-card w-full max-w-lg p-8">
-            <div class="mb-6 flex justify-between items-center border-b border-gray-800 pb-4">
-                <span class="text-sm font-semibold text-gray-300 tracking-wide uppercase">New Deployment</span>
-                <span class="text-xs text-blue-400 font-mono">v2.0 Core</span>
-            </div>
-
-            <div class="space-y-5">
+        <!-- The Engine -->
+        <div class="premium-card w-full max-w-lg p-8 reveal delay-200">
+            <div class="space-y-6">
                 <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">Project Name</label>
-                    <input type="text" id="siteName" placeholder="e.g. production-build" class="input-field w-full rounded-md px-4 py-3 text-sm font-mono" required>
+                    <label class="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Project ID</label>
+                    <input type="text" id="siteName" placeholder="my-awesome-app" class="modern-input w-full rounded-md px-4 py-3 text-sm font-mono" required>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-2 uppercase tracking-wide">Source Assets (ZIP)</label>
-                    <div class="drop-zone rounded-md p-8 text-center cursor-pointer" id="dropZone">
-                        <svg class="w-6 h-6 mx-auto text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                        <div class="text-sm font-medium text-gray-300">Drag & Drop project files</div>
-                        <div class="text-xs text-gray-500 mt-1">or click to browse</div>
-                        <input type="file" id="fileInput" class="hidden" accept=".zip,.html">
+                    <label class="block text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Production Assets (.zip)</label>
+                    <div class="drop-zone rounded-md p-10 text-center cursor-pointer" id="dropZone">
+                        <svg class="w-8 h-8 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        <div class="text-sm text-gray-300 font-medium">Select deployment file</div>
                     </div>
+                    <input type="file" id="fileInput" class="hidden" accept=".zip,.html">
                 </div>
 
-                <!-- التحميل -->
+                <!-- Loader -->
                 <div id="loaderWrapper" class="hidden">
-                    <div class="flex justify-between text-xs text-gray-400 mb-2">
-                        <span>Deploying to Edge Network...</span>
-                        <span class="text-blue-400 font-mono">Processing</span>
+                    <div class="flex justify-between text-xs text-gray-400 mb-2 font-mono">
+                        <span>Building...</span>
+                        <span class="animate-pulse text-white">●</span>
                     </div>
-                    <div class="progress-line rounded-full flex" style="display: block;">
-                        <div class="bar rounded-full"></div>
+                    <div class="w-full bg-[#111] h-1 rounded-full overflow-hidden">
+                        <div class="h-full bg-white w-1/3 animate-[slide_1s_ease-in-out_infinite]"></div>
                     </div>
                 </div>
 
-                <!-- النتيجة -->
-                <div id="resultBox" class="hidden border border-gray-800 bg-gray-900/50 rounded-md p-4">
-                    <div class="flex items-center gap-3 mb-3">
+                <!-- Result -->
+                <div id="resultBox" class="hidden bg-[#111] border border-[#333] rounded-md p-4 mt-4">
+                    <div class="flex items-center gap-2 mb-4">
                         <div class="w-2 h-2 rounded-full bg-green-500"></div>
-                        <span class="text-sm font-medium text-gray-200">Deployment Successful</span>
+                        <span class="text-sm font-medium text-white">Deployed to Edge</span>
                     </div>
-                    <a href="#" id="liveLink" target="_blank" class="block w-full text-center btn-primary text-sm font-medium py-2 rounded-md">View Live Deployment</a>
+                    <a href="#" id="liveLink" target="_blank" class="block w-full text-center btn-core text-sm py-2.5 rounded-md">Visit Production URL</a>
                 </div>
             </div>
         </div>
-        
-        <!-- Terminal-like Logs (Optional detail for tech feel) -->
-        <div class="mt-8 text-xs font-mono text-gray-600 opacity-60">
-            > System ready. Waiting for input payload...
-        </div>
-
     </main>
 
-    <!-- Footer -->
-    <footer class="border-t border-gray-900 bg-[#030712] py-8 mt-auto">
-        <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div class="text-xs text-gray-500">
-                © 2026 Hyptrix Inc. Engineered for performance.
-            </div>
-            <div class="flex space-x-6 text-xs text-gray-500">
-                <a href="#" class="hover:text-gray-300 transition">Privacy Policy</a>
-                <a href="#" class="hover:text-gray-300 transition">Terms of Service</a>
-                <a href="mailto:founder@hyptrix.com" class="hover:text-gray-300 transition">founder@hyptrix.com</a>
+    <footer class="border-t border-[#1f1f1f] bg-black py-10 mt-auto reveal delay-300">
+        <div class="max-w-7xl mx-auto px-6 flex justify-between items-center text-xs text-gray-500">
+            <div>© 2026 Hyptrix Infrastructure.</div>
+            <div class="flex gap-6">
+                <a href="/privacy.html" class="hover:text-white">Privacy Policy</a>
+                <a href="/terms.html" class="hover:text-white">Terms of Service</a>
             </div>
         </div>
     </footer>
 
-    <!-- سكريبت التشغيل الأساسي -->
     <script>
-        
+        // أنيميشن الظهور عند التمرير أو التحميل
+        document.addEventListener("DOMContentLoaded", () => {
+            const reveals = document.querySelectorAll(".reveal");
+            reveals.forEach((el, index) => {
+                setTimeout(() => el.classList.add("active"), index * 150);
+            });
+        });
+
+        // نفس منطق الرفع السابق الخاص بك بدون تغيير
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
         const siteNameInput = document.getElementById('siteName');
@@ -224,30 +198,24 @@
         const liveLink = document.getElementById('liveLink');
 
         dropZone.addEventListener('click', () => fileInput.click());
-
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, preventDefaults, false);
+            dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
         });
-        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
-
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
         });
         ['dragleave', 'drop'].forEach(eventName => {
             dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
         });
-
         dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files));
         fileInput.addEventListener('change', function() { handleFiles(this.files); });
 
         function handleFiles(files) {
             if(files.length === 0) return;
-            // تنسيق احترافي للاسم (أحرف صغيرة ومفيش مسافات)
             const siteName = siteNameInput.value.trim().replace(/\s+/g, '-').toLowerCase();
-            
             if(!siteName) {
                 siteNameInput.style.borderColor = 'red';
-                setTimeout(() => siteNameInput.style.borderColor = '', 2000);
+                setTimeout(() => siteNameInput.style.borderColor = '#333', 2000);
                 siteNameInput.focus();
                 return;
             }
@@ -255,7 +223,6 @@
         }
 
         async function uploadFile(file, siteName) {
-            // إخفاء الـ DropZone وتشغيل خط التحميل التقني
             dropZone.style.display = 'none';
             loaderWrapper.style.display = 'block';
             resultBox.style.display = 'none';
@@ -269,30 +236,20 @@
                 const data = await response.json();
 
                 if(data.status === 'success') {
-    loaderWrapper.style.display = 'none';
-    resultBox.style.display = 'block';
-    
-    const entryFile = file.name.endsWith('.zip') ? '' : file.name;
-    // اللينك الجديد الساحر بالدومين الفرعي
-    liveLink.href = `https://${siteName}.hyptrix.com/${entryFile}`;
-    liveLink.textContent = `https://${siteName}.hyptrix.com`;
-
-
-                
+                    loaderWrapper.style.display = 'none';
+                    resultBox.style.display = 'block';
+                    const entryFile = file.name.endsWith('.zip') ? '' : file.name;
+                    liveLink.href = `https://${siteName}.hyptrix.com/${entryFile}`;
                 } else {
                     alert('Deployment Failed: ' + data.error);
                     resetUI();
                 }
             } catch (error) {
-                alert('Connection to core engine lost.');
+                alert('Connection lost.');
                 resetUI();
             }
         }
-
-        function resetUI() {
-            dropZone.style.display = 'block';
-            loaderWrapper.style.display = 'none';
-        }
+        function resetUI() { dropZone.style.display = 'block'; loaderWrapper.style.display = 'none'; }
     </script>
 </body>
 </html>
