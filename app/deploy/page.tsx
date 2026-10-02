@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useSyncExternalStore } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import HypnoticBackground from '@/components/HypnoticBackground';
@@ -17,7 +17,10 @@ import {
   Sparkles, 
   Activity,
   Layers,
-  X
+  X,
+  User,
+  Trash2,
+  HardDrive
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 
@@ -37,8 +40,71 @@ interface DeploymentRecord {
   status: 'active' | 'syncing';
 }
 
+interface LocalUserProfile {
+  id: string;
+  name: string;
+  email: string;
+  plan: string;
+  memberSince: string;
+  totalDeploys: number;
+}
+
+const DEFAULT_DEPLOYMENTS: DeploymentRecord[] = [
+  {
+    id: 'dep-9041',
+    name: 'core-platform',
+    url: 'core-platform.hyptrix.com',
+    deployedAt: '2 hours ago',
+    size: '4.2 MB',
+    duration: '3.1s',
+    status: 'active',
+  },
+  {
+    id: 'dep-8820',
+    name: 'analytics-portal',
+    url: 'analytics-portal.hyptrix.com',
+    deployedAt: 'Yesterday',
+    size: '7.8 MB',
+    duration: '3.8s',
+    status: 'active',
+  },
+];
+
+function subscribeStorage(callback: () => void) {
+  window.addEventListener('storage', callback);
+  window.addEventListener('hyptrix-storage-sync', callback);
+  return () => {
+    window.removeEventListener('storage', callback);
+    window.removeEventListener('hyptrix-storage-sync', callback);
+  };
+}
+
+function getDeploymentsSnapshot(): string {
+  try {
+    return localStorage.getItem('hyptrix_deployments') || '';
+  } catch {
+    return '';
+  }
+}
+
+function getServerDeploymentsSnapshot(): string {
+  return '';
+}
+
+function getUserProfileSnapshot(): string {
+  try {
+    return localStorage.getItem('hyptrix_user') || '';
+  } catch {
+    return '';
+  }
+}
+
+function getServerUserProfileSnapshot(): string {
+  return '';
+}
+
 export default function DeployDashboardPage() {
-  const { language, isRtl } = useLanguage();
+  const { language } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [projectName, setProjectName] = useState('enterprise-app');
@@ -50,28 +116,88 @@ export default function DeployDashboardPage() {
   const [terminalLogs, setTerminalLogs] = useState<TerminalLog[]>([]);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [previewProject, setPreviewProject] = useState({ name: 'enterprise-app', domain: 'enterprise-app.hyptrix.com' });
 
-  // Active deployments record list
-  const [deployments, setDeployments] = useState<DeploymentRecord[]>([
-    {
-      id: 'dep-9041',
-      name: 'core-platform',
-      url: 'core-platform.hyptrix.com',
-      deployedAt: '2 hours ago',
-      size: '4.2 MB',
-      duration: '3.1s',
-      status: 'active',
-    },
-    {
-      id: 'dep-8820',
-      name: 'analytics-portal',
-      url: 'analytics-portal.hyptrix.com',
-      deployedAt: 'Yesterday',
-      size: '7.8 MB',
-      duration: '3.8s',
-      status: 'active',
-    },
-  ]);
+  // Persistent storage subscriptions (zero setState in effect)
+  const rawDeployments = useSyncExternalStore(subscribeStorage, getDeploymentsSnapshot, getServerDeploymentsSnapshot);
+  const rawUserProfile = useSyncExternalStore(subscribeStorage, getUserProfileSnapshot, getServerUserProfileSnapshot);
+
+  // Initialize storage defaults if not present
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem('hyptrix_deployments')) {
+        localStorage.setItem('hyptrix_deployments', JSON.stringify(DEFAULT_DEPLOYMENTS));
+        window.dispatchEvent(new Event('hyptrix-storage-sync'));
+      }
+      if (!localStorage.getItem('hyptrix_user')) {
+        const initialUser: LocalUserProfile = {
+          id: `usr-${Math.floor(1000 + Math.random() * 9000)}`,
+          name: 'Hyptrix Developer',
+          email: 'developer@hyptrix.local',
+          plan: 'Free Trial',
+          memberSince: 'Oct 2026',
+          totalDeploys: DEFAULT_DEPLOYMENTS.length,
+        };
+        localStorage.setItem('hyptrix_user', JSON.stringify(initialUser));
+        window.dispatchEvent(new Event('hyptrix-storage-sync'));
+      }
+    } catch {
+      // Ignore
+    }
+  }, []);
+
+  const deployments: DeploymentRecord[] = useMemo(() => {
+    if (!rawDeployments) return DEFAULT_DEPLOYMENTS;
+    try {
+      const parsed = JSON.parse(rawDeployments);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_DEPLOYMENTS;
+    } catch {
+      return DEFAULT_DEPLOYMENTS;
+    }
+  }, [rawDeployments]);
+
+  const userProfile: LocalUserProfile = useMemo(() => {
+    if (!rawUserProfile) {
+      return {
+        id: 'usr-8924',
+        name: 'Hyptrix Developer',
+        email: 'developer@hyptrix.local',
+        plan: 'Free Trial',
+        memberSince: 'Oct 2026',
+        totalDeploys: 2,
+      };
+    }
+    try {
+      return JSON.parse(rawUserProfile);
+    } catch {
+      return {
+        id: 'usr-8924',
+        name: 'Hyptrix Developer',
+        email: 'developer@hyptrix.local',
+        plan: 'Free Trial',
+        memberSince: 'Oct 2026',
+        totalDeploys: 2,
+      };
+    }
+  }, [rawUserProfile]);
+
+  const saveDeployments = (newRecords: DeploymentRecord[]) => {
+    try {
+      localStorage.setItem('hyptrix_deployments', JSON.stringify(newRecords));
+      window.dispatchEvent(new Event('hyptrix-storage-sync'));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const saveUserProfile = (newProfile: LocalUserProfile) => {
+    try {
+      localStorage.setItem('hyptrix_user', JSON.stringify(newProfile));
+      window.dispatchEvent(new Event('hyptrix-storage-sync'));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const formattedSlug = projectName
     .toLowerCase()
@@ -81,7 +207,7 @@ export default function DeployDashboardPage() {
 
   const fullDomain = `${formattedSlug}.hyptrix.com`;
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setActualFile(file);
@@ -116,9 +242,9 @@ export default function DeployDashboardPage() {
 
     try {
       setDeployProgress(45);
-      setTerminalLogs(prev => [...prev, { id: Date.now()+1, text: 'Uploading and extracting archive directly to Cloudflare Edge...', time: new Date().toISOString().substring(11, 19) }]);
+      setTerminalLogs(prev => [...prev, { id: Date.now() + 1, text: 'Uploading and extracting archive directly to Cloudflare Edge / Storage...', time: new Date().toISOString().substring(11, 19) }]);
 
-      // إرسال الملف للمحرك السري اللي عملناه
+      // Real deployment request to server-side engine
       const response = await fetch('/api/deploy', {
         method: 'POST',
         body: formData,
@@ -128,38 +254,60 @@ export default function DeployDashboardPage() {
 
       if (data.status === 'success') {
         setDeployProgress(100);
-        setTerminalLogs(prev => [...prev, { id: Date.now()+2, text: 'Deployment successful! Routing active worldwide.', time: new Date().toISOString().substring(11, 19) }]);
+        setTerminalLogs(prev => [...prev, { id: Date.now() + 2, text: 'Deployment successful! Routing active worldwide.', time: new Date().toISOString().substring(11, 19) }]);
 
         setTimeout(() => {
           setDeploymentState('success');
-          setDeployments((prev) => [
-            {
-              id: `dep-${Math.floor(1000 + Math.random() * 9000)}`,
-              name: formattedSlug,
-              url: fullDomain,
-              deployedAt: 'Just now',
-              size: selectedFile ? selectedFile.size : 'Unknown',
-              duration: 'Live',
-              status: 'active',
-            },
-            ...prev,
-          ]);
+          
+          const newRecord: DeploymentRecord = {
+            id: `dep-${Math.floor(1000 + Math.random() * 9000)}`,
+            name: formattedSlug,
+            url: fullDomain,
+            deployedAt: 'Just now',
+            size: selectedFile ? selectedFile.size : 'Unknown',
+            duration: 'Live',
+            status: 'active',
+          };
+
+          const updatedDeployments = [newRecord, ...deployments];
+          saveDeployments(updatedDeployments);
+
+          // Update user deploy count in local storage
+          saveUserProfile({
+            ...userProfile,
+            totalDeploys: userProfile.totalDeploys + 1,
+          });
+
+          setPreviewProject({ name: formattedSlug, domain: fullDomain });
         }, 800);
       } else {
-        alert('Deployment Failed: ' + data.error);
+        alert('Deployment Failed: ' + (data.error || 'Unknown error'));
         setDeploymentState('idle');
       }
-    } catch (error) {
+    } catch {
       alert('Network error connecting to Engine.');
       setDeploymentState('idle');
     }
   };
 
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(`https://${fullDomain}`);
+  const copyToClipboard = (urlToCopy?: string) => {
+    const url = urlToCopy || `https://${fullDomain}`;
+    navigator.clipboard.writeText(url);
     setCopiedUrl(true);
     setTimeout(() => setCopiedUrl(false), 2000);
+  };
+
+  const deleteDeployment = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(language === 'ar' ? 'هل تريد حذف هذا الرابط من سجلك المحلي؟' : 'Remove this project link from your local records?')) {
+      const filtered = deployments.filter((d) => d.id !== id);
+      saveDeployments(filtered);
+    }
+  };
+
+  const openInspectorFor = (dep: DeploymentRecord) => {
+    setPreviewProject({ name: dep.name, domain: dep.url });
+    setIsPreviewOpen(true);
   };
 
   return (
@@ -181,8 +329,19 @@ export default function DeployDashboardPage() {
             </h1>
           </div>
 
-          {/* Real-time Edge Health Status Badges */}
+          {/* User Account Session & Real-time Edge Badges */}
           <div className="flex flex-wrap items-center gap-2 font-mono text-xs shrink-0">
+            {/* User Session Badge stored in LocalStorage */}
+            <div className="px-3 py-1.5 rounded-xl bg-white border border-[#0B1220]/10 flex items-center gap-2 shadow-sm text-[#0B1220]">
+              <div className="w-5 h-5 rounded-full bg-[#38BDF8]/20 flex items-center justify-center text-[#38BDF8] shrink-0">
+                <User className="w-3 h-3" />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className="text-[10px] font-black text-[#0B1220] leading-none">{userProfile.name}</span>
+                <span className="text-[9px] text-[#64748B] leading-none mt-0.5">{userProfile.id} · {userProfile.plan}</span>
+              </div>
+            </div>
+
             <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-white border border-[#0B1220]/10 flex items-center gap-2 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-[#38BDF8] animate-ping shrink-0" />
               <span className="text-[#0B1220] font-bold text-[10px] sm:text-xs">ANYCAST ACTIVE</span>
@@ -307,9 +466,14 @@ export default function DeployDashboardPage() {
                   <div className="pt-1">
                     <button
                       onClick={startDeployment}
-                      className="w-full py-3.5 sm:py-4 rounded-2xl text-xs sm:text-sm font-black text-[#F8FAFC] bg-[#0B1220] hover:bg-[#0B1220]/90 transition-all duration-200 shadow-[0_8px_25px_rgba(11,18,32,0.18)] flex items-center justify-center gap-2.5 cursor-pointer active:scale-98"
+                      disabled={!selectedFile}
+                      className={`w-full py-3.5 sm:py-4 rounded-2xl text-xs sm:text-sm font-black transition-all duration-200 flex items-center justify-center gap-2.5 shadow-[0_8px_25px_rgba(11,18,32,0.18)] ${
+                        selectedFile
+                          ? 'text-[#F8FAFC] bg-[#0B1220] hover:bg-[#0B1220]/90 cursor-pointer active:scale-98'
+                          : 'text-[#94A3B8] bg-[#E2E8F0] cursor-not-allowed'
+                      }`}
                     >
-                      <Sparkles className="w-4 h-4 fill-[#38BDF8] text-[#38BDF8] shrink-0" />
+                      <Sparkles className={`w-4 h-4 shrink-0 ${selectedFile ? 'fill-[#38BDF8] text-[#38BDF8]' : 'text-[#94A3B8]'}`} />
                       <span>
                         {language === 'ar'
                           ? 'فك الضغط وبث المشروع عبر السحابة العالمية'
@@ -387,8 +551,8 @@ export default function DeployDashboardPage() {
                         </h3>
                         <p className="text-xs text-[#475569] mt-0.5 break-words">
                           {language === 'ar'
-                            ? 'تم التوزيع بنجاح عبر مراكز الحافة العالمية مع حماية SSL فورية'
-                            : 'Synchronized across all Global Edge nodes with instant TLS 1.3 encryption.'}
+                            ? 'تم حفظ المشروع والرابط في جهازك بنجاح، ومزامنته عبر مراكز الحافة مع حماية SSL فورية'
+                            : 'Saved to your persistent local deployments. Synchronized across Global Edge with TLS 1.3 encryption.'}
                         </p>
                       </div>
                     </div>
@@ -403,7 +567,7 @@ export default function DeployDashboardPage() {
 
                       <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full sm:w-auto shrink-0">
                         <button
-                          onClick={copyToClipboard}
+                          onClick={() => copyToClipboard()}
                           className="px-3 py-2 rounded-lg bg-[#F8FAFC] hover:bg-[#F1F5F9] text-[#0B1220] text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors border border-[#0B1220]/10 cursor-pointer active:scale-95"
                         >
                           {copiedUrl ? (
@@ -440,8 +604,8 @@ export default function DeployDashboardPage() {
                         <div className="text-[#0B1220] font-bold text-xs sm:text-sm sm:mt-0.5">Enterprise Storage</div>
                       </div>
                       <div className="p-3 rounded-xl bg-white border border-[#0B1220]/8 flex sm:flex-col justify-between items-center sm:justify-center">
-                        <div className="text-[#64748B] text-[10px] font-semibold uppercase">SSL ENCRYPTION</div>
-                        <div className="text-[#38BDF8] font-bold text-xs sm:text-sm sm:mt-0.5">TLS 1.3 Active</div>
+                        <div className="text-[#64748B] text-[10px] font-semibold uppercase">PERSISTENT STATUS</div>
+                        <div className="text-[#38BDF8] font-bold text-xs sm:text-sm sm:mt-0.5">Saved Locally</div>
                       </div>
                     </div>
                   </div>
@@ -452,6 +616,7 @@ export default function DeployDashboardPage() {
                         setDeploymentState('idle');
                         setDeployProgress(0);
                         setSelectedFile(null);
+                        setActualFile(null);
                       }}
                       className="w-full sm:w-auto px-6 py-3 rounded-xl bg-white hover:bg-[#F8FAFC] text-xs font-mono text-[#0B1220] border border-[#0B1220]/10 transition-all cursor-pointer font-bold active:scale-95 shadow-sm"
                     >
@@ -467,53 +632,81 @@ export default function DeployDashboardPage() {
           {/* Right Sidebar: Active Deployments & Specs (4 cols) */}
           <div className="lg:col-span-4 w-full space-y-5 sm:space-y-6 min-w-0">
             
-            {/* Active Deployments Ledger */}
+            {/* Active Deployments Ledger (Persistent in LocalStorage) */}
             <div className="rounded-3xl bg-white border border-[#0B1220]/8 p-4 sm:p-6 shadow-[0_10px_30px_rgba(11,18,32,0.04)] space-y-3.5 sm:space-y-4 min-w-0">
               <div className="flex items-center justify-between pb-3 border-b border-[#0B1220]/8 gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <Layers className="w-4 h-4 text-[#38BDF8] shrink-0" />
                   <h3 className="text-xs sm:text-sm font-bold text-[#0B1220] uppercase tracking-wider font-mono truncate">
-                    {language === 'ar' ? 'المشاريع النشطة' : 'Active Projects'}
+                    {language === 'ar' ? 'المشاريع والروابط المحفوظة' : 'Saved Projects & Links'}
                   </h3>
                 </div>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#38BDF8]/15 text-[#0B1220] shrink-0">
-                  {deployments.length} LIVE
-                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#38BDF8]/15 text-[#0B1220]">
+                    {deployments.length} LIVE
+                  </span>
+                </div>
               </div>
 
-              <div className="space-y-2.5 min-w-0">
-                {deployments.map((dep) => (
-                  <div
-                    key={dep.id}
-                    className="p-3 sm:p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#0B1220]/8 space-y-1.5 hover:border-[#38BDF8]/40 transition-colors min-w-0"
-                  >
-                    <div className="flex items-center justify-between gap-2 min-w-0">
-                      <span className="text-xs font-bold text-[#0B1220] font-mono truncate min-w-0 flex-1">
-                        {dep.name}
-                      </span>
-                      <span className="text-[10px] text-[#38BDF8] font-mono font-bold flex items-center gap-1 shrink-0">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8]" />
-                        {dep.status.toUpperCase()}
-                      </span>
-                    </div>
-
-                    <div className="text-[11px] text-[#38BDF8] font-mono truncate min-w-0 font-semibold">
-                      https://{dep.url}
-                    </div>
-
-                    <div className="flex items-center justify-between text-[10px] text-[#64748B] font-mono pt-1 border-t border-[#0B1220]/5">
-                      <span>{dep.size} · {dep.duration}</span>
-                      <span>{dep.deployedAt}</span>
-                    </div>
+              <div className="space-y-2.5 min-h-[160px] max-h-[380px] overflow-y-auto pr-1">
+                {deployments.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-[#64748B] font-mono border border-dashed border-[#0B1220]/10 rounded-2xl">
+                    {language === 'ar' ? 'لا توجد مشاريع منشأة حالياً' : 'No deployed projects yet.'}
                   </div>
-                ))}
+                ) : (
+                  deployments.map((dep) => (
+                    <div
+                      key={dep.id}
+                      onClick={() => openInspectorFor(dep)}
+                      className="p-3 sm:p-3.5 rounded-2xl bg-[#F8FAFC] border border-[#0B1220]/8 space-y-1.5 hover:border-[#38BDF8]/60 transition-all min-w-0 cursor-pointer group shadow-sm hover:shadow"
+                    >
+                      <div className="flex items-center justify-between gap-2 min-w-0">
+                        <span className="text-xs font-bold text-[#0B1220] font-mono truncate min-w-0 flex-1 group-hover:text-[#38BDF8] transition-colors">
+                          {dep.name}
+                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-[10px] text-[#38BDF8] font-mono font-bold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8]" />
+                            {dep.status.toUpperCase()}
+                          </span>
+                          <button
+                            onClick={(e) => deleteDeployment(dep.id, e)}
+                            title={language === 'ar' ? 'حذف من السجل' : 'Delete from history'}
+                            className="p-1 rounded text-[#94A3B8] hover:text-red-500 transition-colors ml-1 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="text-[11px] text-[#38BDF8] font-mono truncate min-w-0 font-semibold flex items-center justify-between">
+                        <span className="truncate">https://{dep.url}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(`https://${dep.url}`);
+                          }}
+                          className="text-[10px] bg-white border border-[#0B1220]/10 px-1.5 py-0.5 rounded text-[#0B1220] hover:bg-[#F1F5F9] shrink-0 ml-2 cursor-pointer font-bold"
+                        >
+                          Copy
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-[#64748B] font-mono pt-1 border-t border-[#0B1220]/5">
+                        <span>{dep.size} · {dep.duration}</span>
+                        <span>{dep.deployedAt}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
             {/* Architecture Highlights Box */}
             <div className="rounded-3xl bg-white border border-[#0B1220]/8 p-4 sm:p-6 shadow-[0_10px_30px_rgba(11,18,32,0.04)] space-y-3 sm:space-y-3.5 min-w-0">
-              <div className="text-xs font-mono text-[#A78BFA] font-bold uppercase tracking-wider">
-                {language === 'ar' ? 'معايير الأمان والسرعة' : 'DEPLOYMENT METRICS'}
+              <div className="text-xs font-mono text-[#A78BFA] font-bold uppercase tracking-wider flex items-center gap-2">
+                <HardDrive className="w-3.5 h-3.5" />
+                <span>{language === 'ar' ? 'معايير الأمان والسرعة' : 'DEPLOYMENT METRICS'}</span>
               </div>
 
               <div className="space-y-2.5 text-xs text-[#475569] font-normal">
@@ -562,7 +755,7 @@ export default function DeployDashboardPage() {
                 <div className="flex-1 max-w-md mx-auto bg-white border border-[#0B1220]/10 rounded-lg px-2.5 py-1 flex items-center gap-1.5 text-[11px] sm:text-xs font-mono text-[#0B1220] truncate shadow-sm">
                   <ShieldCheck className="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />
                   <span className="text-[#38BDF8]">https://</span>
-                  <span className="text-[#0B1220] font-bold truncate">{fullDomain}</span>
+                  <span className="text-[#0B1220] font-bold truncate">{previewProject.domain}</span>
                   <span className="hidden sm:inline ml-auto text-[10px] text-[#A78BFA] font-bold">EDGE CLOUD</span>
                 </div>
 
@@ -587,7 +780,7 @@ export default function DeployDashboardPage() {
                   </div>
 
                   <h3 className="text-xl sm:text-2xl font-black text-[#0B1220] tracking-tight uppercase break-words">
-                    {projectName}
+                    {previewProject.name}
                   </h3>
                   <p className="text-xs sm:text-sm text-[#475569] leading-relaxed font-normal">
                     This project is live across the Global Edge Network. Replicated across international edge nodes to absorb traffic surges with guaranteed billing predictability.
@@ -604,7 +797,14 @@ export default function DeployDashboardPage() {
                     </div>
                   </div>
 
-                  <div className="pt-3">
+                  <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-2">
+                    <button
+                      onClick={() => copyToClipboard(`https://${previewProject.domain}`)}
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold bg-[#38BDF8] text-[#0B1220] hover:bg-[#38BDF8]/90 transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>{copiedUrl ? 'Copied' : 'Copy Project URL'}</span>
+                    </button>
                     <button
                       onClick={() => setIsPreviewOpen(false)}
                       className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold bg-[#0B1220] text-[#F8FAFC] hover:bg-[#0B1220]/90 transition-colors cursor-pointer shadow-sm"
