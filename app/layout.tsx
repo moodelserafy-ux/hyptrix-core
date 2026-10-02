@@ -6,6 +6,12 @@ const siteUrl = process.env.APP_URL || 'https://hyptrix.com';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  applicationName: 'Hyptrix',
+  appleWebApp: {
+    title: 'Hyptrix',
+    statusBarStyle: 'default',
+    capable: true,
+  },
   title: {
     default: 'Hyptrix — Next-Gen Global Edge Cloud | Instant Web Application Deployment',
     template: '%s | Hyptrix Edge Cloud',
@@ -24,9 +30,9 @@ export const metadata: Metadata = {
     'instant wildcard subdomains',
     'zero config web hosting',
   ],
-  authors: [{ name: 'Hyptrix Core Engineering', url: siteUrl }],
-  creator: 'Hyptrix Inc.',
-  publisher: 'Hyptrix Inc.',
+  authors: [{ name: 'Hyptrix', url: siteUrl }],
+  creator: 'Hyptrix',
+  publisher: 'Hyptrix',
   formatDetection: {
     email: false,
     address: false,
@@ -101,7 +107,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       {
         '@type': 'Organization',
         '@id': `${siteUrl}/#organization`,
-        name: 'Hyptrix Inc.',
+        name: 'Hyptrix',
         url: siteUrl,
         logo: {
           '@type': 'ImageObject',
@@ -215,6 +221,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" dir="ltr" className="light">
       <head>
+        <meta name="application-name" content="Hyptrix" />
+        <meta name="apple-mobile-web-app-title" content="Hyptrix" />
         <link rel="icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/icon.png" />
         <link rel="apple-touch-icon" href="/apple-icon.png" />
