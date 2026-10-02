@@ -23,7 +23,8 @@ import {
   HardDrive,
   Settings,
   Link2,
-  RefreshCw
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 
@@ -59,8 +60,6 @@ const DEFAULT_DEPLOYMENTS: DeploymentRecord[] = [
     id: 'dep-9041',
     name: 'core-platform',
     url: 'core-platform.hyptrix.com',
-    customDomain: 'app.hyptrix-demo.io',
-    dnsStatus: 'verified',
     deployedAt: '2 hours ago',
     size: '4.2 MB',
     duration: '3.1s',
@@ -130,6 +129,8 @@ export default function DeployDashboardPage() {
   const [selectedDepForDomain, setSelectedDepForDomain] = useState<DeploymentRecord | null>(null);
   const [customDomainInput, setCustomDomainInput] = useState('');
   const [isDomainLinked, setIsDomainLinked] = useState(false);
+  const [isLinkingDomain, setIsLinkingDomain] = useState(false);
+  const [domainError, setDomainError] = useState<string | null>(null);
   const [isVerifyingDns, setIsVerifyingDns] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -335,52 +336,104 @@ export default function DeployDashboardPage() {
   const openDomainModalFor = (dep: DeploymentRecord) => {
     setSelectedDepForDomain(dep);
     setCustomDomainInput(dep.customDomain || '');
-    setIsDomainLinked(!!dep.customDomain);
+    setIsDomainLinked(Boolean(dep.customDomain));
+    setDomainError(null);
+    setIsLinkingDomain(false);
     setIsDomainModalOpen(true);
   };
 
-  // Handle Domain Linking & DNS generation
-  const handleLinkDomain = () => {
-    if (!customDomainInput.trim()) return;
-    
-    const cleanDomain = customDomainInput.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
-    setIsDomainLinked(true);
-    
-    if (selectedDepForDomain) {
-      const updated = deployments.map(d => {
-        if (d.id === selectedDepForDomain.id) {
-          return {
-            ...d,
-            customDomain: cleanDomain,
-            dnsStatus: d.dnsStatus || 'pending'
-          };
-        }
-        return d;
+  // Handle Domain Linking via API
+  const handleLinkDomain = async () => {
+    setDomainError(null);
+    const rawInput = customDomainInput.trim();
+
+    if (!rawInput) {
+      setDomainError(language === 'ar' ? 'يرجى إدخال اسم النطاق أولاً' : 'Please enter a domain name first');
+      return;
+    }
+
+    const cleanDomain = rawInput.toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+    setIsLinkingDomain(true);
+
+    try {
+      const response = await fetch('/api/domain', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ domain: cleanDomain }),
       });
-      saveDeployments(updated);
-      setSelectedDepForDomain(prev => prev ? { ...prev, customDomain: cleanDomain, dnsStatus: prev.dnsStatus || 'pending' } : null);
+
+      const data = await response.json();
+
+      if (response.ok && (data.status === 'success' || data.success)) {
+        // Only show DNS card when API responds with success
+        setIsDomainLinked(true);
+        setDomainError(null);
+
+        if (selectedDepForDomain) {
+          const updated = deployments.map(d => {
+            if (d.id === selectedDepForDomain.id) {
+              return {
+                ...d,
+                customDomain: cleanDomain,
+                dnsStatus: 'pending' as const,
+              };
+            }
+            return d;
+          });
+          saveDeployments(updated);
+          setSelectedDepForDomain(prev => prev ? { ...prev, customDomain: cleanDomain, dnsStatus: 'pending' } : null);
+        }
+      } else {
+        setIsDomainLinked(false);
+        setDomainError(data.error || data.message || (language === 'ar' ? 'فشل ربط النطاق، يرجى التحقق من صحة الاسم والمحاولة مجدداً' : 'Failed to link domain. Please verify the domain and try again.'));
+      }
+    } catch (err: unknown) {
+      setIsDomainLinked(false);
+      const errorMsg = err instanceof Error ? err.message : (language === 'ar' ? 'حدث خطأ في الاتصال بالخادم' : 'Network error connecting to API');
+      setDomainError(errorMsg);
+    } finally {
+      setIsLinkingDomain(false);
     }
   };
 
-  // Simulate active DNS verification
-  const handleVerifyDns = () => {
+  // Check & verify real DNS propagation from Cloudflare API
+  const handleVerifyDns = async () => {
     setIsVerifyingDns(true);
-    setTimeout(() => {
-      setIsVerifyingDns(false);
-      if (selectedDepForDomain) {
-        const updated = deployments.map(d => {
-          if (d.id === selectedDepForDomain.id) {
-            return {
-              ...d,
-              dnsStatus: 'verified' as const
-            };
+    try {
+      const res = await fetch(`/api/domain?domain=${encodeURIComponent(customDomainInput.trim())}`);
+      const data = await res.json();
+      
+      if (res.ok && data.status === 'success') {
+        if (data.dnsStatus === 'verified') {
+          if (selectedDepForDomain) {
+            const updated = deployments.map(d => {
+              if (d.id === selectedDepForDomain.id) {
+                return {
+                  ...d,
+                  dnsStatus: 'verified' as const,
+                };
+              }
+              return d;
+            });
+            saveDeployments(updated);
+            setSelectedDepForDomain(prev => prev ? { ...prev, dnsStatus: 'verified' } : null);
           }
-          return d;
-        });
-        saveDeployments(updated);
-        setSelectedDepForDomain(prev => prev ? { ...prev, dnsStatus: 'verified' } : null);
+        } else {
+          // Still pending in Cloudflare
+          alert(language === 'ar' ? 'سجلات DNS لا تزال قيد الانتشار لدى مزود النطاق. يرجى التأكد من إضافة سجل CNAME والانتظار قليلاً.' : 'DNS records are still propagating across authoritative name servers. Please verify your CNAME record.');
+        }
+      } else {
+        alert(data.error || (language === 'ar' ? 'فشل التحقق من حالة الدومين' : 'Failed to verify domain status'));
       }
-    }, 1500);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : (language === 'ar' ? 'خطأ في الاتصال بالخادم' : 'Network error');
+      alert(errorMsg);
+    } finally {
+      setIsVerifyingDns(false);
+    }
   };
 
   return (
@@ -1003,7 +1056,10 @@ export default function DeployDashboardPage() {
                       <input
                         type="text"
                         value={customDomainInput}
-                        onChange={(e) => setCustomDomainInput(e.target.value)}
+                        onChange={(e) => {
+                          setCustomDomainInput(e.target.value);
+                          if (domainError) setDomainError(null);
+                        }}
                         placeholder="www.example.com or app.mybrand.io"
                         className="w-full bg-[#F8FAFC] border border-[#0B1220]/15 rounded-2xl pl-10 pr-4 py-3 text-sm font-mono text-[#0B1220] placeholder:text-[#64748B]/50 focus:outline-none focus:border-[#38BDF8] focus:ring-1 focus:ring-[#38BDF8] transition-all"
                       />
@@ -1011,17 +1067,34 @@ export default function DeployDashboardPage() {
 
                     <button
                       onClick={handleLinkDomain}
-                      disabled={!customDomainInput.trim()}
+                      disabled={!customDomainInput.trim() || isLinkingDomain}
                       className={`px-6 py-3 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 shrink-0 ${
-                        customDomainInput.trim()
+                        customDomainInput.trim() && !isLinkingDomain
                           ? 'bg-[#0B1220] text-[#F8FAFC] hover:bg-[#0B1220]/90 shadow-[0_4px_16px_rgba(11,18,32,0.18)] cursor-pointer active:scale-95'
                           : 'bg-[#E2E8F0] text-[#94A3B8] cursor-not-allowed'
                       }`}
                     >
-                      <Link2 className="w-4 h-4 text-[#38BDF8]" />
-                      <span>{language === 'ar' ? 'ربط النطاق' : 'Link Domain'}</span>
+                      {isLinkingDomain ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 text-[#38BDF8] animate-spin shrink-0" />
+                          <span>{language === 'ar' ? 'جاري الربط...' : 'Linking...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Link2 className="w-4 h-4 text-[#38BDF8] shrink-0" />
+                          <span>{language === 'ar' ? 'ربط النطاق' : 'Link Domain'}</span>
+                        </>
+                      )}
                     </button>
                   </div>
+
+                  {/* Error State Banner */}
+                  {domainError && (
+                    <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs font-mono flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                      <span className="break-words font-semibold">{domainError}</span>
+                    </div>
+                  )}
                   
                   <p className="text-[11px] text-[#64748B]">
                     {language === 'ar' 
