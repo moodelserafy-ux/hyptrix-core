@@ -20,7 +20,10 @@ import {
   X,
   User,
   Trash2,
-  HardDrive
+  HardDrive,
+  Settings,
+  Link2,
+  RefreshCw
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n';
 
@@ -34,6 +37,8 @@ interface DeploymentRecord {
   id: string;
   name: string;
   url: string;
+  customDomain?: string;
+  dnsStatus?: 'pending' | 'verified';
   deployedAt: string;
   size: string;
   duration: string;
@@ -54,6 +59,8 @@ const DEFAULT_DEPLOYMENTS: DeploymentRecord[] = [
     id: 'dep-9041',
     name: 'core-platform',
     url: 'core-platform.hyptrix.com',
+    customDomain: 'app.hyptrix-demo.io',
+    dnsStatus: 'verified',
     deployedAt: '2 hours ago',
     size: '4.2 MB',
     duration: '3.1s',
@@ -117,6 +124,14 @@ export default function DeployDashboardPage() {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewProject, setPreviewProject] = useState({ name: 'enterprise-app', domain: 'enterprise-app.hyptrix.com' });
+
+  // Custom Domain & Settings Modal State
+  const [isDomainModalOpen, setIsDomainModalOpen] = useState(false);
+  const [selectedDepForDomain, setSelectedDepForDomain] = useState<DeploymentRecord | null>(null);
+  const [customDomainInput, setCustomDomainInput] = useState('');
+  const [isDomainLinked, setIsDomainLinked] = useState(false);
+  const [isVerifyingDns, setIsVerifyingDns] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Persistent storage subscriptions (zero setState in effect)
   const rawDeployments = useSyncExternalStore(subscribeStorage, getDeploymentsSnapshot, getServerDeploymentsSnapshot);
@@ -297,6 +312,12 @@ export default function DeployDashboardPage() {
     setTimeout(() => setCopiedUrl(false), 2000);
   };
 
+  const copyDnsField = (field: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
   const deleteDeployment = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm(language === 'ar' ? 'هل تريد حذف هذا الرابط من سجلك المحلي؟' : 'Remove this project link from your local records?')) {
@@ -308,6 +329,58 @@ export default function DeployDashboardPage() {
   const openInspectorFor = (dep: DeploymentRecord) => {
     setPreviewProject({ name: dep.name, domain: dep.url });
     setIsPreviewOpen(true);
+  };
+
+  // Open Custom Domain & Settings Modal
+  const openDomainModalFor = (dep: DeploymentRecord) => {
+    setSelectedDepForDomain(dep);
+    setCustomDomainInput(dep.customDomain || '');
+    setIsDomainLinked(!!dep.customDomain);
+    setIsDomainModalOpen(true);
+  };
+
+  // Handle Domain Linking & DNS generation
+  const handleLinkDomain = () => {
+    if (!customDomainInput.trim()) return;
+    
+    const cleanDomain = customDomainInput.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+    setIsDomainLinked(true);
+    
+    if (selectedDepForDomain) {
+      const updated = deployments.map(d => {
+        if (d.id === selectedDepForDomain.id) {
+          return {
+            ...d,
+            customDomain: cleanDomain,
+            dnsStatus: d.dnsStatus || 'pending'
+          };
+        }
+        return d;
+      });
+      saveDeployments(updated);
+      setSelectedDepForDomain(prev => prev ? { ...prev, customDomain: cleanDomain, dnsStatus: prev.dnsStatus || 'pending' } : null);
+    }
+  };
+
+  // Simulate active DNS verification
+  const handleVerifyDns = () => {
+    setIsVerifyingDns(true);
+    setTimeout(() => {
+      setIsVerifyingDns(false);
+      if (selectedDepForDomain) {
+        const updated = deployments.map(d => {
+          if (d.id === selectedDepForDomain.id) {
+            return {
+              ...d,
+              dnsStatus: 'verified' as const
+            };
+          }
+          return d;
+        });
+        saveDeployments(updated);
+        setSelectedDepForDomain(prev => prev ? { ...prev, dnsStatus: 'verified' } : null);
+      }
+    }, 1500);
   };
 
   return (
@@ -590,6 +663,23 @@ export default function DeployDashboardPage() {
                           <ExternalLink className="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />
                           <span>Inspect Live</span>
                         </button>
+
+                        {/* Quick Custom Domain Link Trigger */}
+                        <button
+                          onClick={() => openDomainModalFor({
+                            id: 'current-deploy',
+                            name: formattedSlug,
+                            url: fullDomain,
+                            deployedAt: 'Just now',
+                            size: selectedFile ? selectedFile.size : 'Unknown',
+                            duration: 'Live',
+                            status: 'active',
+                          })}
+                          className="col-span-2 sm:col-span-1 px-3 py-2 rounded-lg bg-white text-[#0B1220] hover:bg-[#F1F5F9] text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-colors border border-[#0B1220]/12 cursor-pointer active:scale-95 shadow-sm"
+                        >
+                          <Link2 className="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />
+                          <span>Custom Domain</span>
+                        </button>
                       </div>
                     </div>
 
@@ -669,10 +759,23 @@ export default function DeployDashboardPage() {
                             <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8]" />
                             {dep.status.toUpperCase()}
                           </span>
+                          
+                          {/* Settings / Custom Domain Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDomainModalFor(dep);
+                            }}
+                            title={language === 'ar' ? 'إعدادات النطاق المخصص' : 'Custom Domain & Settings'}
+                            className="p-1 rounded text-[#64748B] hover:text-[#0B1220] hover:bg-white transition-colors cursor-pointer ml-0.5"
+                          >
+                            <Settings className="w-3.5 h-3.5" />
+                          </button>
+
                           <button
                             onClick={(e) => deleteDeployment(dep.id, e)}
                             title={language === 'ar' ? 'حذف من السجل' : 'Delete from history'}
-                            className="p-1 rounded text-[#94A3B8] hover:text-red-500 transition-colors ml-1 cursor-pointer"
+                            className="p-1 rounded text-[#94A3B8] hover:text-red-500 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -691,6 +794,23 @@ export default function DeployDashboardPage() {
                           Copy
                         </button>
                       </div>
+
+                      {/* Display Custom Domain if Linked */}
+                      {dep.customDomain && (
+                        <div className="flex items-center justify-between text-[10px] font-mono bg-white px-2 py-1 rounded-lg border border-[#38BDF8]/30 text-[#0B1220]">
+                          <div className="flex items-center gap-1 truncate min-w-0">
+                            <Globe className="w-3 h-3 text-[#38BDF8] shrink-0" />
+                            <span className="truncate font-bold">{dep.customDomain}</span>
+                          </div>
+                          <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold shrink-0 ml-1 ${
+                            dep.dnsStatus === 'verified' 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : 'bg-amber-100 text-amber-800 animate-pulse'
+                          }`}>
+                            {dep.dnsStatus === 'verified' ? 'DNS OK' : 'DNS PENDING'}
+                          </span>
+                        </div>
+                      )}
 
                       <div className="flex items-center justify-between text-[10px] text-[#64748B] font-mono pt-1 border-t border-[#0B1220]/5">
                         <span>{dep.size} · {dep.duration}</span>
@@ -813,6 +933,225 @@ export default function DeployDashboardPage() {
                     </button>
                   </div>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Domain / Settings Modal (Premium Enterprise Bento-Box Vibe) */}
+      <AnimatePresence>
+        {isDomainModalOpen && selectedDepForDomain && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-[#0B1220]/75 backdrop-blur-2xl">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="w-full max-w-2xl bg-white border border-[#0B1220]/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh]"
+            >
+              {/* Modal Header */}
+              <div className="bg-[#F8FAFC] px-5 sm:px-7 py-4 sm:py-5 border-b border-[#0B1220]/8 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-[#0B1220] text-[#38BDF8] flex items-center justify-center shrink-0 shadow-md">
+                    <Globe className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold text-[#38BDF8] uppercase tracking-wider">
+                      <Settings className="w-3 h-3 text-[#A78BFA]" />
+                      <span>{language === 'ar' ? 'إعدادات النطاق والتوجيه السحابي' : 'ENTERPRISE DOMAIN ROUTING'}</span>
+                    </div>
+                    <h2 className="text-base sm:text-xl font-black text-[#0B1220] tracking-tight truncate">
+                      {language === 'ar' ? 'ربط نطاق مخصص (Custom Domain)' : 'Custom Domain & DNS Settings'}
+                    </h2>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsDomainModalOpen(false)}
+                  className="p-1.5 rounded-xl text-[#64748B] hover:text-[#0B1220] hover:bg-[#0B1220]/5 transition-colors cursor-pointer shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-5 sm:p-7 overflow-y-auto space-y-6">
+                
+                {/* Active Subdomain Overview Box */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-[#F8FAFC] border border-[#0B1220]/8 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 font-mono text-xs">
+                  <div>
+                    <span className="text-[10px] text-[#64748B] uppercase font-bold block">Assigned Edge Endpoint</span>
+                    <span className="text-[#0B1220] font-black break-all">https://{selectedDepForDomain.url}</span>
+                  </div>
+                  <span className="self-start sm:self-auto text-[10px] px-2.5 py-0.5 rounded-full bg-[#38BDF8]/15 text-[#0B1220] border border-[#38BDF8]/30 font-bold shrink-0">
+                    ANYCAST 0-RTT
+                  </span>
+                </div>
+
+                {/* Input Field Section (Sleek Modern Input) */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-[#475569] uppercase font-mono tracking-wider">
+                    {language === 'ar' ? 'أدخل اسم النطاق الخاص بك' : 'Enter Your Custom Domain'}
+                  </label>
+                  
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                    <div className="relative flex-1 min-w-0">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#64748B]">
+                        <Globe className="w-4 h-4 text-[#38BDF8]" />
+                      </div>
+                      <input
+                        type="text"
+                        value={customDomainInput}
+                        onChange={(e) => setCustomDomainInput(e.target.value)}
+                        placeholder="www.example.com or app.mybrand.io"
+                        className="w-full bg-[#F8FAFC] border border-[#0B1220]/15 rounded-2xl pl-10 pr-4 py-3 text-sm font-mono text-[#0B1220] placeholder:text-[#64748B]/50 focus:outline-none focus:border-[#38BDF8] focus:ring-1 focus:ring-[#38BDF8] transition-all"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleLinkDomain}
+                      disabled={!customDomainInput.trim()}
+                      className={`px-6 py-3 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 shrink-0 ${
+                        customDomainInput.trim()
+                          ? 'bg-[#0B1220] text-[#F8FAFC] hover:bg-[#0B1220]/90 shadow-[0_4px_16px_rgba(11,18,32,0.18)] cursor-pointer active:scale-95'
+                          : 'bg-[#E2E8F0] text-[#94A3B8] cursor-not-allowed'
+                      }`}
+                    >
+                      <Link2 className="w-4 h-4 text-[#38BDF8]" />
+                      <span>{language === 'ar' ? 'ربط النطاق' : 'Link Domain'}</span>
+                    </button>
+                  </div>
+                  
+                  <p className="text-[11px] text-[#64748B]">
+                    {language === 'ar' 
+                      ? 'مثال: www.yourcompany.com أو portal.domain.io. لا تحتاج لنقل النطاق، فقط أضف سجل CNAME.'
+                      : 'Example: www.yourcompany.com or portal.brand.io. You keep your domain at your registrar; just add a CNAME record.'}
+                  </p>
+                </div>
+
+                {/* DNS Instructions Card: Dark-themed Bento-Box style */}
+                {isDomainLinked && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="rounded-3xl bg-[#0B1220] border border-[#0B1220] p-5 sm:p-6 text-[#F8FAFC] shadow-2xl space-y-5"
+                  >
+                    {/* Bento Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3.5 border-b border-[#F8FAFC]/10">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-[#38BDF8] animate-pulse" />
+                          <h3 className="text-sm font-black text-[#F8FAFC] tracking-tight uppercase font-mono">
+                            DNS Configuration Records
+                          </h3>
+                        </div>
+                        <p className="text-xs text-[#F8FAFC]/60 mt-0.5">
+                          Add the following canonical record at your DNS registrar (Cloudflare, Namecheap, GoDaddy, Route53, etc.)
+                        </p>
+                      </div>
+
+                      <span className="self-start sm:self-auto text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#38BDF8]/20 text-[#38BDF8] border border-[#38BDF8]/30 font-bold shrink-0">
+                        CNAME REQUIRED
+                      </span>
+                    </div>
+
+                    {/* Bento Box Grid (3 columns for Type, Name, Target) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      
+                      {/* Box 1: Record Type */}
+                      <div className="p-3.5 rounded-2xl bg-[#070C16] border border-[#F8FAFC]/10 space-y-1.5 flex flex-col justify-between">
+                        <div className="text-[10px] font-mono uppercase text-[#F8FAFC]/50 font-bold">Record Type</div>
+                        <div className="text-base font-black font-mono text-[#38BDF8]">CNAME</div>
+                        <button
+                          onClick={() => copyDnsField('type', 'CNAME')}
+                          className="self-start text-[10px] font-mono font-bold px-2 py-1 rounded bg-[#F8FAFC]/10 hover:bg-[#F8FAFC]/20 text-[#F8FAFC] transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          {copiedField === 'type' ? <Check className="w-3 h-3 text-[#38BDF8]" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedField === 'type' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+
+                      {/* Box 2: Record Name / Host */}
+                      <div className="p-3.5 rounded-2xl bg-[#070C16] border border-[#F8FAFC]/10 space-y-1.5 flex flex-col justify-between">
+                        <div className="text-[10px] font-mono uppercase text-[#F8FAFC]/50 font-bold">Name / Host</div>
+                        <div className="text-base font-black font-mono text-[#F8FAFC] truncate">@ (or www)</div>
+                        <button
+                          onClick={() => copyDnsField('name', customDomainInput.startsWith('www.') ? 'www' : '@')}
+                          className="self-start text-[10px] font-mono font-bold px-2 py-1 rounded bg-[#F8FAFC]/10 hover:bg-[#F8FAFC]/20 text-[#F8FAFC] transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          {copiedField === 'name' ? <Check className="w-3 h-3 text-[#38BDF8]" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedField === 'name' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+
+                      {/* Box 3: Target Value */}
+                      <div className="p-3.5 rounded-2xl bg-[#070C16] border border-[#F8FAFC]/10 space-y-1.5 flex flex-col justify-between">
+                        <div className="text-[10px] font-mono uppercase text-[#F8FAFC]/50 font-bold">Target Value</div>
+                        <div className="text-xs font-black font-mono text-[#38BDF8] truncate">cname.hyptrix.com</div>
+                        <button
+                          onClick={() => copyDnsField('target', 'cname.hyptrix.com')}
+                          className="self-start text-[10px] font-mono font-bold px-2 py-1 rounded bg-[#F8FAFC]/10 hover:bg-[#F8FAFC]/20 text-[#F8FAFC] transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          {copiedField === 'target' ? <Check className="w-3 h-3 text-[#38BDF8]" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedField === 'target' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+
+                    </div>
+
+                    {/* Pending / Verification State Banner */}
+                    <div className="p-4 rounded-2xl bg-[#070C16] border border-[#F8FAFC]/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {selectedDepForDomain.dnsStatus === 'verified' ? (
+                          <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                            <CheckCircle2 className="w-5 h-5" />
+                          </div>
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-[#38BDF8]/20 text-[#38BDF8] flex items-center justify-center shrink-0">
+                            <span className="w-3 h-3 rounded-full bg-[#38BDF8] animate-ping" />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-[#F8FAFC] flex items-center gap-1.5">
+                            <span>
+                              {selectedDepForDomain.dnsStatus === 'verified'
+                                ? 'DNS Record Verified & Active'
+                                : 'Verifying DNS Propagation...'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#F8FAFC]/60 mt-0.5">
+                            {selectedDepForDomain.dnsStatus === 'verified'
+                              ? 'Wildcard TLS 1.3 certificate successfully issued. Serving live worldwide.'
+                              : 'Listening across global edge resolvers. Propagation usually completes in 10-60 seconds.'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={handleVerifyDns}
+                        disabled={isVerifyingDns}
+                        className="px-4 py-2 rounded-xl text-xs font-mono font-bold text-[#0B1220] bg-[#38BDF8] hover:bg-[#38BDF8]/90 transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isVerifyingDns ? 'animate-spin' : ''}`} />
+                        <span>{isVerifyingDns ? 'Checking...' : 'Check Status'}</span>
+                      </button>
+                    </div>
+
+                  </motion.div>
+                )}
+
+              </div>
+
+              {/* Modal Footer */}
+              <div className="bg-[#F8FAFC] px-5 sm:px-7 py-3.5 border-t border-[#0B1220]/8 flex items-center justify-end gap-2.5">
+                <button
+                  onClick={() => setIsDomainModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-[#0B1220] bg-white border border-[#0B1220]/10 hover:bg-[#F1F5F9] transition-all cursor-pointer shadow-sm"
+                >
+                  Close
+                </button>
               </div>
             </motion.div>
           </div>
