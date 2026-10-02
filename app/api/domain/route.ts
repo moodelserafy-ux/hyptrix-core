@@ -1,110 +1,92 @@
 import { NextResponse } from 'next/server';
 
+// 1. دالة الربط (لإرسال الدومين إلى Cloudflare)
 export async function POST(request: Request) {
   try {
     const { domain } = await request.json();
 
-    if (!domain || typeof domain !== 'string' || !domain.trim()) {
+    if (!domain) {
       return NextResponse.json({ error: 'Domain is required' }, { status: 400 });
     }
 
-    // تنظيف الدومين لضمان قبوله كـ FQDN صحيح في Cloudflare
-    const cleanDomain = domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
-
     const ZONE_ID = process.env.CLOUDFLARE_ZONE_ID;
-    const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+    const GLOBAL_KEY = process.env.CLOUDFLARE_GLOBAL_KEY;
+    const EMAIL = process.env.CLOUDFLARE_EMAIL;
 
-    // إذا لم تكن المفاتيح موجودة، يفشل الطلب مباشرة وبشكل حقيقي
-    if (!ZONE_ID || !API_TOKEN) {
-      return NextResponse.json(
-        { error: 'Cloudflare credentials missing (CLOUDFLARE_ZONE_ID or CLOUDFLARE_API_TOKEN)' },
-        { status: 500 }
-      );
+    if (!ZONE_ID || !GLOBAL_KEY || !EMAIL) {
+      return NextResponse.json({ error: 'Cloudflare configuration missing' }, { status: 500 });
     }
 
-    // إرسال الطلب الفعلي لـ Cloudflare لربط الدومين واستخراج شهادة SSL
     const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/custom_hostnames`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${API_TOKEN}`,
+        'X-Auth-Email': EMAIL,
+        'X-Auth-Key': GLOBAL_KEY,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        hostname: cleanDomain,
+        hostname: domain,
         ssl: {
           method: 'http',
-          type: 'dv',
-        },
+          type: 'dv'
+        }
       }),
     });
 
     const data = await response.json();
 
-    if (data.success) {
-      return NextResponse.json({
-        status: 'success',
-        message: 'Domain linked successfully to Hyptrix Edge!',
-        hostname: data.result?.hostname || cleanDomain,
-        dnsStatus: data.result?.status === 'active' ? 'verified' : 'pending',
-      });
+    if (response.ok && data.success) {
+      return NextResponse.json({ status: 'success', message: 'Domain linked successfully!' });
     } else {
-      const errorMsg = data.errors?.[0]?.message || 'Failed to link domain in Cloudflare';
-      return NextResponse.json({ error: errorMsg }, { status: 400 });
+      return NextResponse.json({ error: data.errors?.[0]?.message || 'Failed to link domain' }, { status: 400 });
     }
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// فحص حالة الدومين الحقيقية من Cloudflare
+// 2. دالة الفحص (للتحقق من حالة الدومين بعد ربطه للزرار Check Status)
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const domain = searchParams.get('domain');
 
     if (!domain) {
-      return NextResponse.json({ error: 'Missing domain parameter' }, { status: 400 });
+      return NextResponse.json({ error: 'Domain is required' }, { status: 400 });
     }
 
-    const cleanDomain = domain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
     const ZONE_ID = process.env.CLOUDFLARE_ZONE_ID;
-    const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+    const GLOBAL_KEY = process.env.CLOUDFLARE_GLOBAL_KEY;
+    const EMAIL = process.env.CLOUDFLARE_EMAIL;
 
-    if (!ZONE_ID || !API_TOKEN) {
-      return NextResponse.json(
-        { error: 'Cloudflare credentials missing' },
-        { status: 500 }
-      );
+    if (!ZONE_ID || !GLOBAL_KEY || !EMAIL) {
+      return NextResponse.json({ error: 'Cloudflare configuration missing' }, { status: 500 });
     }
 
-    const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/custom_hostnames?hostname=${cleanDomain}`, {
+    const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/custom_hostnames?hostname=${domain}`, {
+      method: 'GET',
       headers: {
-        'Authorization': `Bearer ${API_TOKEN}`,
+        'X-Auth-Email': EMAIL,
+        'X-Auth-Key': GLOBAL_KEY,
         'Content-Type': 'application/json',
       },
     });
 
     const data = await response.json();
 
-    if (data.success && data.result && data.result.length > 0) {
-      const item = data.result[0];
-      const isVerified = item.status === 'active' && item.ssl?.status === 'active';
-      return NextResponse.json({
-        status: 'success',
-        domain: cleanDomain,
-        dnsStatus: isVerified ? 'verified' : 'pending',
-        sslStatus: item.ssl?.status || 'pending',
-        cloudflareStatus: item.status,
+    if (response.ok && data.success && data.result.length > 0) {
+      const hostnameData = data.result[0];
+      // لو الحالة active يبقى العميل ربط الـ DNS صح
+      const isVerified = hostnameData.status === 'active'; 
+      
+      return NextResponse.json({ 
+        status: 'success', 
+        dnsStatus: isVerified ? 'verified' : 'pending' 
       });
     } else {
-      return NextResponse.json({
-        status: 'error',
-        error: data.errors?.[0]?.message || 'Domain not found in Cloudflare Custom Hostnames',
-      }, { status: 404 });
+       return NextResponse.json({ status: 'success', dnsStatus: 'pending' });
     }
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Error checking domain status';
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
