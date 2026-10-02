@@ -1,8 +1,30 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useCallback, useSyncExternalStore } from 'react';
 
 export type Language = 'en' | 'ar';
+
+function subscribeLang(callback: () => void) {
+  window.addEventListener('storage', callback);
+  window.addEventListener('hyptrix-lang-change', callback);
+  return () => {
+    window.removeEventListener('storage', callback);
+    window.removeEventListener('hyptrix-lang-change', callback);
+  };
+}
+
+function getLangSnapshot(): Language {
+  try {
+    const val = localStorage.getItem('hyptrix_lang');
+    return val === 'ar' ? 'ar' : 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+function getServerLangSnapshot(): Language {
+  return 'en';
+}
 
 interface Translations {
   // Navigation
@@ -279,15 +301,20 @@ const LanguageContext = createContext<LanguageContextType>({
 });
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('en');
+  const language = useSyncExternalStore(subscribeLang, getLangSnapshot, getServerLangSnapshot);
 
-  const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
+  const setLanguage = useCallback((lang: Language) => {
+    try {
+      localStorage.setItem('hyptrix_lang', lang);
+      window.dispatchEvent(new Event('hyptrix-lang-change'));
+    } catch {
+      // Ignore
+    }
     if (typeof document !== 'undefined') {
       document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
       document.documentElement.lang = lang;
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
