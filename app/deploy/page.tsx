@@ -319,48 +319,36 @@ export default function DeployDashboardPage() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-      const deleteDeployment = async (dep: DeploymentRecord, e: React.MouseEvent) => {
+        const deleteDeployment = async (dep: DeploymentRecord, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (confirm(language === 'ar' ? 'هل تريد حذف هذا المشروع نهائياً؟ سيتم فك ارتباط أي نطاقات مخصصة.' : 'Remove this project permanently? Linked domains will be unlinked.')) {
-      try {
-        // 1. لو المشروع مربوط بدومين، نفكه الأول من كلاودفلير
-        if (dep.customDomain) {
-          await fetch('/api/domain', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ domain: dep.customDomain }),
-          });
-        }
+    if (!confirm(language === 'ar' ? 'هل تريد حذف هذا المشروع نهائياً؟ سيتم فك ارتباط أي نطاقات مخصصة.' : 'Remove this project permanently? Linked domains will be unlinked.')) {
+      return;
+    }
 
-        // 2. نمسح المشروع نفسه من السيرفر (باستخدام اسم المشروع)
-        await fetch('/api/deploy', {
+    try {
+      if (dep.customDomain) {
+        await fetch('/api/domain', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ projectId: dep.name }), 
+          body: JSON.stringify({ domain: dep.customDomain }),
         });
-
-        // 3. نمسحه من الواجهة والذاكرة المحلية
-        const filtered = deployments.filter((d) => d.id !== dep.id);
-        saveDeployments(filtered);
-
-      } catch (err) {
-        alert(language === 'ar' ? 'حدث خطأ أثناء الحذف' : 'Error deleting project');
       }
+
+      await fetch('/api/deploy', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: dep.name }), 
+      });
+
+      const filtered = deployments.filter((d) => d.id !== dep.id);
+      saveDeployments(filtered);
+
+    } catch (err) {
+      alert(language === 'ar' ? 'حدث خطأ أثناء الحذف' : 'Error deleting project');
     }
   };
 
-
-
-        // 3. نمسحه من الواجهة
-        const filtered = deployments.filter((d) => d.id !== id);
-        saveDeployments(filtered);
-
-      } catch (err) {
-        alert(language === 'ar' ? 'حدث خطأ أثناء الحذف' : 'Error deleting project');
-      }
-    }
-  };
 
 
   const openInspectorFor = (dep: DeploymentRecord) => {
