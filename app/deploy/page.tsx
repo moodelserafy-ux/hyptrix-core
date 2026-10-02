@@ -43,6 +43,7 @@ export default function DeployDashboardPage() {
 
   const [projectName, setProjectName] = useState('enterprise-app');
   const [selectedFile, setSelectedFile] = useState<{ name: string; size: string } | null>(null);
+  const [actualFile, setActualFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [deploymentState, setDeploymentState] = useState<'idle' | 'deploying' | 'success'>('idle');
   const [deployProgress, setDeployProgress] = useState(0);
@@ -80,13 +81,11 @@ export default function DeployDashboardPage() {
 
   const fullDomain = `${formattedSlug}.hyptrix.com`;
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setSelectedFile({
-        name: file.name,
-        size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-      });
+      setActualFile(file);
+      setSelectedFile({ name: file.name, size: `${(file.size / (1024 * 1024)).toFixed(2)} MB` });
       const baseName = file.name.split('.')[0];
       if (baseName) setProjectName(baseName);
     }
@@ -97,57 +96,65 @@ export default function DeployDashboardPage() {
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      setSelectedFile({
-        name: file.name,
-        size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-      });
+      setActualFile(file);
+      setSelectedFile({ name: file.name, size: `${(file.size / (1024 * 1024)).toFixed(2)} MB` });
       const baseName = file.name.split('.')[0];
       if (baseName) setProjectName(baseName);
     }
   };
 
-  const startDeployment = () => {
+  const startDeployment = async () => {
+    if (!actualFile) return;
+
     setDeploymentState('deploying');
-    setDeployProgress(0);
-    setTerminalLogs([]);
+    setDeployProgress(15);
+    setTerminalLogs([{ id: Date.now(), text: 'Connecting to Hyptrix Core Engine...', time: new Date().toISOString().substring(11, 19) }]);
 
-    const logMessages = [
-      { id: 1, text: 'Extracting .zip package and validating application payload...', delay: 250, progress: 20 },
-      { id: 2, text: 'Generating SHA-256 integrity checksums and pushing to enterprise object storage...', delay: 650, progress: 50 },
-      { id: 3, text: 'Replicating assets across Global Edge nodes (Cairo, Ashburn, Tokyo, London)...', delay: 1100, progress: 80 },
-      { id: 4, text: 'Provisioning TLS 1.3 certificate with instant 0-RTT encryption...', delay: 1550, progress: 95 },
-      { id: 5, text: 'Broadcast completed in 3.2 seconds. Production Anycast route active worldwide.', delay: 1950, progress: 100 },
-    ];
+    const formData = new FormData();
+    formData.append('site_name', formattedSlug);
+    formData.append('site_file', actualFile);
 
-    logMessages.forEach((item, index) => {
-      setTimeout(() => {
-        const timeNow = new Date().toISOString().substring(11, 19);
-        setTerminalLogs((prev) => [
-          ...prev,
-          { id: item.id, text: item.text, time: timeNow },
-        ]);
-        setDeployProgress(item.progress);
+    try {
+      setDeployProgress(45);
+      setTerminalLogs(prev => [...prev, { id: Date.now()+1, text: 'Uploading and extracting archive directly to Cloudflare Edge...', time: new Date().toISOString().substring(11, 19) }]);
 
-        if (index === logMessages.length - 1) {
-          setTimeout(() => {
-            setDeploymentState('success');
-            setDeployments((prev) => [
-              {
-                id: `dep-${Math.floor(1000 + Math.random() * 9000)}`,
-                name: formattedSlug,
-                url: fullDomain,
-                deployedAt: 'Just now',
-                size: selectedFile ? selectedFile.size : '3.6 MB',
-                duration: '3.2s',
-                status: 'active',
-              },
-              ...prev,
-            ]);
-          }, 350);
-        }
-      }, item.delay);
-    });
+      // إرسال الملف للمحرك السري اللي عملناه
+      const response = await fetch('/api/deploy', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        setDeployProgress(100);
+        setTerminalLogs(prev => [...prev, { id: Date.now()+2, text: 'Deployment successful! Routing active worldwide.', time: new Date().toISOString().substring(11, 19) }]);
+
+        setTimeout(() => {
+          setDeploymentState('success');
+          setDeployments((prev) => [
+            {
+              id: `dep-${Math.floor(1000 + Math.random() * 9000)}`,
+              name: formattedSlug,
+              url: fullDomain,
+              deployedAt: 'Just now',
+              size: selectedFile ? selectedFile.size : 'Unknown',
+              duration: 'Live',
+              status: 'active',
+            },
+            ...prev,
+          ]);
+        }, 800);
+      } else {
+        alert('Deployment Failed: ' + data.error);
+        setDeploymentState('idle');
+      }
+    } catch (error) {
+      alert('Network error connecting to Engine.');
+      setDeploymentState('idle');
+    }
   };
+
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(`https://${fullDomain}`);
