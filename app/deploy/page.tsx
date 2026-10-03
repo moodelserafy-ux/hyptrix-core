@@ -366,7 +366,7 @@ export default function DeployDashboardPage() {
     setIsDomainModalOpen(true);
   };
 
-  // Handle Domain Linking via API
+    // Handle Domain Linking via API
   const handleLinkDomain = async () => {
     setDomainError(null);
     const rawInput = customDomainInput.trim();
@@ -386,13 +386,16 @@ export default function DeployDashboardPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ domain: cleanDomain }),
+        // التعديل هنا: خلينا الواجهة تبعت اسم المشروع مع الدومين للباك إند
+        body: JSON.stringify({ 
+          domain: cleanDomain,
+          projectName: selectedDepForDomain?.name 
+        }),
       });
 
       const data = await response.json();
 
       if (response.ok && (data.status === 'success' || data.success)) {
-        // Only show DNS card when API responds with success
         setIsDomainLinked(true);
         setDomainError(null);
 
@@ -422,6 +425,7 @@ export default function DeployDashboardPage() {
       setIsLinkingDomain(false);
     }
   };
+
 
   // Check & verify real DNS propagation from Cloudflare API
   const handleVerifyDns = async () => {
